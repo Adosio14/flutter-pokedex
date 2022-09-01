@@ -1,115 +1,198 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter_pokedex/extensions/string_casing.dart';
+import 'package:flutter_pokedex/models/pokemons_model.dart';
+import 'package:flutter_pokedex/providers/api_requests_handler.dart';
+import 'package:flutter_pokedex/routes/app_routes.dart';
+import 'package:provider/provider.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(AppState());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
-
-  // This widget is the root of your application.
+class AppState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
-        primarySwatch: Colors.blue,
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => HttpRequestsService(),
+        ),
+      ],
+      child: const MyApp(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key? key, required this.title}) : super(key: key);
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
+class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Flutter Pokedex',
+      theme: ThemeData(
+        primarySwatch: Colors.indigo,
+      ),
+      home: PokemonsList(),
+      routes: AppRoutes.routes,
+      initialRoute: AppRoutes.initialRoute,
+    );
+  }
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class HolisScreen extends StatefulWidget {
+  const HolisScreen({Key? key}) : super(key: key);
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  @override
+  State<HolisScreen> createState() => _HolisScreenState();
+}
+
+class _HolisScreenState extends State<HolisScreen> {
+  @override
+  void initState() {
+    super.initState();
+    final requestsProvider =
+        Provider.of<HttpRequestsService>(context, listen: false);
+    if (mounted) requestsProvider.savePokemons();
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    return Scaffold(
+      appBar: AppBar(),
+      body: Column(
+        children: [
+          InkWell(
+            onTap: () => {Navigator.popAndPushNamed(context, "list")},
+            child: Container(
+              child: Text("loading"),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class PokemonsList extends StatefulWidget {
+  PokemonsList({
+    Key? key,
+  }) : super(key: key);
+
+  @override
+  State<PokemonsList> createState() => _PokemonsListState();
+}
+
+class _PokemonsListState extends State<PokemonsList> {
+  List<Result> pokemonList = [];
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final requestsProvider =
+        Provider.of<HttpRequestsService>(context, listen: false);
+    pokemonList = requestsProvider.pokemonList.cast<Result>();
+
     return Scaffold(
       appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: Text("Pokedex but is a flutter app"),
+        centerTitle: true,
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
+      body: SafeArea(
+          child: Center(
+        child: Padding(
+          padding: const EdgeInsets.only(left: 16, right: 16),
+          child: Expanded(
+              child: ListView(
+            physics: BouncingScrollPhysics(),
+            children: [
+              ListView.builder(
+                shrinkWrap: true,
+                physics: BouncingScrollPhysics(),
+                itemCount: pokemonList.length,
+                itemBuilder: (context, index) {
+                  return Column(
+                    children: [
+                      SizedBox(
+                        height: 20,
+                      ),
+                      Container(
+                        decoration: BoxDecoration(
+                          image: DecorationImage(
+                              image: NetworkImage(
+                                  "https://wallpaperaccess.com/full/3551101.png"),
+                              fit: BoxFit.cover),
+                          borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(20),
+                              bottomRight: Radius.circular(20),
+                              bottomLeft: Radius.circular(100),
+                              topRight: Radius.circular(100)),
+                        ),
+                        child: PokemonListTile(
+                            pokemonName: pokemonList[index].name.capitalize()),
+                      ),
+                    ],
+                  );
+                },
+              )
+            ],
+          )),
+        ),
+      )),
+    );
+  }
+}
+
+class CustomClipPath extends CustomClipper<Path> {
+  var radius = 10.0;
+  @override
+  Path getClip(Size size) {
+    Path path = Path();
+    path.lineTo(0, 200);
+    path.lineTo(200, 200);
+    path.lineTo(260, 0);
+    path.lineTo(30, 0);
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+}
+
+class PokemonListTile extends StatelessWidget {
+  final String pokemonName;
+
+  PokemonListTile({
+    Key? key,
+    required this.pokemonName,
+  }) : super(key: key);
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Padding(
+        padding: const EdgeInsets.only(left: 48),
+        child: ClipPath(
+          child: Container(
+            width: MediaQuery.of(context).size.width,
+            color: Colors.blueGrey.withOpacity(0.75),
+            child: Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: Text(
+                pokemonName,
+                style: const TextStyle(fontSize: 24),
+              ),
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
-            ),
-          ],
+          ),
+          clipper: CustomClipPath(),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      onTap: () {},
+      hoverColor: Colors.indigo,
     );
   }
 }
